@@ -10,6 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -27,12 +28,13 @@ jobs:
           J="$ANDROID_HOME/platforms/android-35/android.jar"
 
           mkdir -p src/uz/uno/menu classes dex
-
+          mkdir -p res/drawable
+          cp uno_icon.png res/drawable/uno_icon.png
           cat > AndroidManifest.xml <<'MANIFEST'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="uz.uno.menu" android:versionCode="23" android:versionName="23">
           <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="32"/>
           <uses-permission android:name="android.permission.INTERNET"/>
-          <application android:label="UNO Airways" android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" android:usesCleartextTraffic="false">
+          <application android:label="UNO Airways" android:icon="@drawable/uno_icon" android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" android:usesCleartextTraffic="false">
           <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="fullSensor">
           <intent-filter>
           <action android:name="android.intent.action.MAIN"/>
@@ -89,7 +91,8 @@ jobs:
 
           javac -source 8 -target 8 -classpath "$J" -d classes src/uz/uno/menu/MainActivity.java
           "$B/d8" --lib "$J" --output dex classes/uz/uno/menu/MainActivity.class
-          "$B/aapt2" link -I "$J" --manifest AndroidManifest.xml -o unsigned.apk
+          "$B/aapt2" compile --dir res -o resources.zip
+          "$B/aapt2" link -I "$J" --manifest AndroidManifest.xml -o unsigned.apk resources.zip
           zip -j unsigned.apk dex/classes.dex
           "$B/zipalign" -f 4 unsigned.apk aligned.apk
 
