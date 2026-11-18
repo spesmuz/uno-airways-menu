@@ -19,7 +19,7 @@ jobs:
       - name: Build APK
         shell: bash
         run: |
-          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          "$ANDROID_HOME/cmdline-tools/20.0/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0'
           B="$ANDROID_HOME/build-tools/35.0.0"
           J="$ANDROID_HOME/platforms/android-35/android.jar"
 
