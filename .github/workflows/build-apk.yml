@@ -15,11 +15,14 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
 
       - name: Build APK
         shell: bash
         run: |
-          "$ANDROID_HOME/cmdline-tools/20.0/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0'
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
           B="$ANDROID_HOME/build-tools/35.0.0"
           J="$ANDROID_HOME/platforms/android-35/android.jar"
 
