@@ -1,0 +1,102 @@
+name: Build UNO Airways APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Build APK
+        shell: bash
+        run: |
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          B="$ANDROID_HOME/build-tools/35.0.0"
+          J="$ANDROID_HOME/platforms/android-35/android.jar"
+
+          mkdir -p src/uz/uno/menu classes dex
+
+          cat > AndroidManifest.xml <<'MANIFEST'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="uz.uno.menu" android:versionCode="23" android:versionName="23">
+          <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="32"/>
+          <uses-permission android:name="android.permission.INTERNET"/>
+          <application android:label="UNO Airways" android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" android:usesCleartextTraffic="false">
+          <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape">
+          <intent-filter>
+          <action android:name="android.intent.action.MAIN"/>
+          <category android:name="android.intent.category.LAUNCHER"/>
+          </intent-filter>
+          </activity>
+          </application>
+          </manifest>
+          MANIFEST
+
+          cat > src/uz/uno/menu/MainActivity.java <<'JAVA'
+          package uz.uno.menu;
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.webkit.*;
+
+          public class MainActivity extends Activity {
+            WebView web;
+
+            void immersive() {
+              getWindow().getDecorView().setSystemUiVisibility(5894);
+            }
+
+            public void onCreate(Bundle b) {
+              super.onCreate(b);
+              immersive();
+              getWindow().addFlags(128);
+              web = new WebView(this);
+              setContentView(web);
+              WebSettings s = web.getSettings();
+              s.setJavaScriptEnabled(true);
+              s.setDomStorageEnabled(true);
+              s.setMediaPlaybackRequiresUserGesture(false);
+              s.setAllowFileAccess(false);
+              s.setAllowContentAccess(false);
+              s.setCacheMode(WebSettings.LOAD_NO_CACHE);
+              web.setWebViewClient(new WebViewClient());
+              web.setWebChromeClient(new WebChromeClient());
+              web.loadUrl("https://spesmuz.github.io/uno-airways-menu/?v=23");
+            }
+
+            public void onWindowFocusChanged(boolean f) {
+              super.onWindowFocusChanged(f);
+              if(f) immersive();
+            }
+
+            @Override
+            public void onBackPressed() {
+              if(web.canGoBack()) web.goBack();
+              else super.onBackPressed();
+            }
+          }
+          JAVA
+
+          javac -source 8 -target 8 -classpath "$J" -d classes src/uz/uno/menu/MainActivity.java
+          "$B/d8" --lib "$J" --output dex classes/uz/uno/menu/MainActivity.class
+          "$B/aapt2" link -I "$J" --manifest AndroidManifest.xml -o unsigned.apk
+          zip -j unsigned.apk dex/classes.dex
+          "$B/zipalign" -f 4 unsigned.apk aligned.apk
+
+          keytool -genkeypair -keystore build.jks -storepass android -keypass android -alias uno -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=UNO Airways'
+
+          "$B/apksigner" sign --ks build.jks --ks-pass pass:android --key-pass pass:android --out UNO-Airways.apk aligned.apk
+          "$B/apksigner" verify UNO-Airways.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UNO-Airways-APK
+          path: UNO-Airways.apk
